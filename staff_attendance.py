@@ -5,6 +5,7 @@ import csv
 import os
 import sqlite3
 import tkinter as tk
+from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
@@ -27,8 +28,18 @@ def connect(db_path: Path = DB_PATH) -> sqlite3.Connection:
     return conn
 
 
+@contextmanager
+def db_session(db_path: Path = DB_PATH):
+    conn = connect(db_path)
+    try:
+        with conn:
+            yield conn
+    finally:
+        conn.close()
+
+
 def initialize(db_path: Path = DB_PATH) -> None:
-    with connect(db_path) as conn:
+    with db_session(db_path) as conn:
         conn.executescript("""
             CREATE TABLE IF NOT EXISTS employees (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -53,7 +64,7 @@ def add_employee(code: str, full_name: str, department: str = "", db_path: Path 
     code, full_name, department = code.strip(), full_name.strip(), department.strip()
     if not code or not full_name:
         raise ValueError("کد پرسنلی و نام کارمند الزامی است.")
-    with connect(db_path) as conn:
+    with db_session(db_path) as conn:
         cursor = conn.execute(
             "INSERT INTO employees(employee_code,full_name,department,created_at) VALUES(?,?,?,?)",
             (code, full_name, department, datetime.now().astimezone().isoformat(timespec="seconds")),
@@ -62,7 +73,7 @@ def add_employee(code: str, full_name: str, department: str = "", db_path: Path 
 
 
 def list_employees(db_path: Path = DB_PATH) -> list[sqlite3.Row]:
-    with connect(db_path) as conn:
+    with db_session(db_path) as conn:
         return conn.execute("""
             SELECT e.id, e.employee_code, e.full_name, e.department,
                    CASE WHEN EXISTS(SELECT 1 FROM attendance a
@@ -76,7 +87,7 @@ def record_punch(employee_id: int, action: str, db_path: Path = DB_PATH) -> str:
     if action not in {"in", "out"}:
         raise ValueError("نوع ثبت نامعتبر است.")
     now = datetime.now().astimezone().isoformat(timespec="seconds")
-    with connect(db_path) as conn:
+    with db_session(db_path) as conn:
         conn.execute("BEGIN IMMEDIATE")
         employee = conn.execute("SELECT active FROM employees WHERE id=?", (employee_id,)).fetchone()
         if employee is None or not employee["active"]:
@@ -106,7 +117,7 @@ def attendance_rows(day: str = "", db_path: Path = DB_PATH) -> list[sqlite3.Row]
         query += " WHERE substr(a.check_in,1,10)=?"
         params = (day,)
     query += " ORDER BY a.check_in DESC, e.employee_code COLLATE NOCASE"
-    with connect(db_path) as conn:
+    with db_session(db_path) as conn:
         return conn.execute(query, params).fetchall()
 
 
