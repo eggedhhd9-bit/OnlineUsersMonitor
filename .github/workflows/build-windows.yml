@@ -1,12 +1,10 @@
-name: Build DNS Clean Finder for Windows
+name: Build Staff Attendance for Windows
 
 on:
   workflow_dispatch:
   push:
     branches:
       - main
-    paths:
-      - ".github/workflows/build-windows.yml"
     tags:
       - "v*"
 
@@ -22,8 +20,8 @@ jobs:
         with:
           python-version: "3.12"
       - run: python -m pip install -r requirements-build.txt
-      - run: python -m PyInstaller --noconfirm --clean --onefile --windowed --name DNSCleanFinder dns_clean_finder.py
+      - run: python -m PyInstaller --noconfirm --clean --onefile --windowed --name StaffAttendance staff_attendance.py
       - uses: actions/upload-artifact@v4
         with:
-          name: DNSCleanFinder-windows
-          path: dist/DNSCleanFinder.exe
+          name: StaffAttendance-windows
+          path: dist/StaffAttendance.exe
