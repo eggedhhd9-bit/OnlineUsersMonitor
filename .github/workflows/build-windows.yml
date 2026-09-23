@@ -1,0 +1,29 @@
+name: Build Windows app
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/build-windows.yml"
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install -r requirements-build.txt
+      - run: python -m PyInstaller --noconfirm --clean --onefile --windowed --name OnlineUsersMonitor online_users_monitor.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: OnlineUsersMonitor-windows
+          path: dist/OnlineUsersMonitor.exe
